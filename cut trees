@@ -82,9 +82,7 @@ local function verifySelectedChests()
 end
 
 local function simulatePressE(duration)
-    UserInputService.InputBegan:Fire({UserInputType=Enum.UserInputType.Keyboard, KeyCode=Enum.KeyCode.E})
     task.wait(duration or 0.25)
-    UserInputService.InputEnded:Fire({UserInputType=Enum.UserInputType.Keyboard, KeyCode=Enum.KeyCode.E})
 end
 
 local function teleportOnce(chestModel)
@@ -145,10 +143,10 @@ task.spawn(function()
                     if timeout>=10 then running=false return end
                     task.wait(1)
                 end
-                teleportOnce(chestModel)
+                                teleportOnce(chestModel)
                 task.wait(speed + math.random()*0.05)
                 count = count + 1
-                if count>200 then break end
+                if count > 200 then break end
             end
         end
         if running then task.wait(1 + math.random()*0.5) end
@@ -160,18 +158,106 @@ local Window = Rayfield:CreateWindow({
     LoadingTitle = "Cut Trees Script",
     LoadingSubtitle = "by Toqxsicx",
     ConfigurationSaving = {
-        Enabled=true,
-        FolderName="ChestCollectorMisc",
-        FileName="Config"
+        Enabled = true,
+        FolderName = "ChestCollectorMisc",
+        FileName = "Config"
     },
-    KeySystem=false
+    KeySystem = false
 })
 
 local MainTab = Window:CreateTab("Main")
 local MovementTab = Window:CreateTab("Movement")
 local TeleportTab = Window:CreateTab("Teleport Worlds")
 local MiscTab = Window:CreateTab("Misc")
-local EspTab = Window:CreateTab("Esp") -- Added Esp tab here
+local EspTab = Window:CreateTab("Esp")
+
+-- Store original tool handle size and mesh scale for reset
+local originalToolSize = nil
+local originalMeshScale = nil
+
+-- Function to get the tool's Handle part
+local function getToolHandle()
+    local charFolder = workspace:FindFirstChild("CharacterFolders")
+    if not charFolder then return nil end
+    local playerFolder = charFolder:FindFirstChild(p.Name)
+    if not playerFolder then return nil end
+    for _, child in ipairs(playerFolder:GetChildren()) do
+        if child:IsA("Tool") then
+            local handle = child:FindFirstChild("Handle")
+            if handle and handle:IsA("BasePart") then
+                return handle
+            end
+        end
+    end
+    return nil
+end
+
+-- Initialize originalToolSize and originalMeshScale on script load
+do
+    local handle = getToolHandle()
+    if handle then
+        originalToolSize = handle.Size
+        local mesh = handle:FindFirstChildOfClass("SpecialMesh")
+        if mesh then
+            originalMeshScale = mesh.Scale
+        else
+            originalMeshScale = Vector3.new(1,1,1)
+        end
+    end
+end
+
+-- === Main Tab Sections and Controls ===
+
+-- Tree Farm section at the top
+MainTab:CreateSection("Tree Farm")
+
+local treeFarmRunning = false
+local originalHandleSize = nil
+local originalHandleTransparency = nil
+
+MainTab:CreateToggle({
+    Name = "Tree Farm",
+    CurrentValue = false,
+    Flag = "TreeFarmToggle",
+    Callback = function(enabled)
+        treeFarmRunning = enabled
+
+        local handle = getToolHandle()
+        if not handle then
+            warn("[TreeFarm] Tool Handle not found!")
+            return
+        end
+
+        if enabled then
+            -- Save original size and transparency if not saved yet
+            if not originalHandleSize then
+                originalHandleSize = handle.Size
+            end
+            if not originalHandleTransparency then
+                originalHandleTransparency = handle.Transparency
+            end
+
+            -- Set handle size very large and make transparent
+            handle.Size = Vector3.new(500, 500, 500)
+            handle.Transparency = 1
+
+            print("[TreeFarm] Handle enlarged and made transparent.")
+        else
+            -- Restore original size and transparency
+            if originalHandleSize then
+                handle.Size = originalHandleSize
+            end
+            if originalHandleTransparency then
+                handle.Transparency = originalHandleTransparency
+            end
+
+            print("[TreeFarm] Handle size and transparency restored.")
+        end
+    end,
+})
+
+-- Chest Farm Section
+MainTab:CreateSection("Chest Farm")
 
 MainTab:CreateToggle({
     Name = "Auto Collect Selected Chests",
@@ -184,6 +270,8 @@ MainTab:CreateToggle({
         toggleDebounce = false
     end,
 })
+
+MainTab:CreateSection("Configurations")
 
 MainTab:CreateSlider({
     Name = "Teleport Speed",
@@ -228,8 +316,15 @@ MainTab:CreateLabel("Note: Preload Chests ensures theres no TP errors when autoc
 
 MainTab:CreateButton({
     Name = "Refresh Dropdown",
-    Callback = verifySelectedChests,
+    Callback = function()
+        local success, err = pcall(verifySelectedChests)
+        if not success then
+            warn("[Refresh Dropdown] Callback error: "..tostring(err))
+        end
+    end,
 })
+
+-- === Movement Tab ===
 
 MovementTab:CreateToggle({
     Name = "Walk Speed",
@@ -265,6 +360,8 @@ RunService.Stepped:Connect(function()
     end
 end)
 
+-- === Teleport Tab ===
+
 TeleportTab:CreateButton({
     Name = "Teleport to World 1",
     Callback = function()
@@ -283,6 +380,8 @@ TeleportTab:CreateButton({
     end,
 })
 
+-- === Misc Tab ===
+
 MiscTab:CreateButton({
     Name = "Infinite Yield",
     Callback = function()
@@ -290,9 +389,10 @@ MiscTab:CreateButton({
     end,
 })
 
--- Esp Tab: Toggle XRAY BoolValue in GamepassFolder
+-- === Esp Tab ===
+
 EspTab:CreateToggle({
-    Name = "Chest ESP",
+    Name = "Chest Esp",
     CurrentValue = false,
     Flag = "ChestEspToggle",
     Callback = function(value)
@@ -310,4 +410,4 @@ EspTab:CreateToggle({
     end,
 })
 
-print("[DEBUG] Full script loaded, ESP toggle added to control XRAY BoolValue.")
+print("[DEBUG] Script fully loaded with all requested features.")
