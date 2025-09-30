@@ -171,6 +171,7 @@ local MainTab = Window:CreateTab("Main")
 local MovementTab = Window:CreateTab("Movement")
 local TeleportTab = Window:CreateTab("Teleport Worlds")
 local MiscTab = Window:CreateTab("Misc")
+local EspTab = Window:CreateTab("Esp") -- Added Esp tab here
 
 MainTab:CreateToggle({
     Name = "Auto Collect Selected Chests",
@@ -289,4 +290,24 @@ MiscTab:CreateButton({
     end,
 })
 
-print("[DEBUG] Full script loaded, ESP removed as requested. Add ESP later if wanted.")
+-- Esp Tab: Toggle XRAY BoolValue in GamepassFolder
+EspTab:CreateToggle({
+    Name = "Chest ESP",
+    CurrentValue = false,
+    Flag = "ChestEspToggle",
+    Callback = function(value)
+        local gamepassFolder = p:FindFirstChild("GamepassFolder")
+        if gamepassFolder then
+            local xrayBool = gamepassFolder:FindFirstChild("XRAY")
+            if xrayBool and xrayBool:IsA("BoolValue") then
+                xrayBool.Value = value
+            else
+                warn("[ESP] XRAY BoolValue not found in GamepassFolder")
+            end
+        else
+            warn("[ESP] GamepassFolder not found in LocalPlayer")
+        end
+    end,
+})
+
+print("[DEBUG] Full script loaded, ESP toggle added to control XRAY BoolValue.")
